@@ -63,11 +63,13 @@ router.post("/:listId", authenticateToken, async (req, res) => {
     list.tasks.push(task._id);
     await list.save();
 
-    await task
-      .populate("createdBy", "username")
-      .populate("updatedBy", "username");
+    const createdTask = await Task.findOne({
+      _id: task._id,
+    })
+      .populate({ path: "createdBy", select: "username", model: "user" })
+      .populate({ path: "updatedBy", select: "username", model: "user" });
 
-    res.status(201).json(task);
+    res.status(201).json(createdTask);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
