@@ -75,7 +75,7 @@ router.post("/:listId", authenticateToken, async (req, res) => {
   }
 });
 
-// Update a task
+// Update description of a task
 router.put("/:listId/:taskId", authenticateToken, async (req, res) => {
   try {
     const { content, completed } = req.body;
@@ -93,6 +93,39 @@ router.put("/:listId/:taskId", authenticateToken, async (req, res) => {
     const task = await Task.findOneAndUpdate(
       { _id: taskId, list: listId },
       { content, completed, updatedBy: userId },
+      { new: true }
+    )
+      .populate("createdBy", "username")
+      .populate("updatedBy", "username");
+
+    if (!task) {
+      return res.status(404).json({ error: ErrorMessage.taskNotFound });
+    }
+
+    res.status(200).json(task);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Complete or reactivate a task
+router.put("/:listId/:taskId/complete", authenticateToken, async (req, res) => {
+  try {
+    const { completed } = req.body;
+    const { listId, taskId } = req.params;
+    const { id: userId } = req.user;
+
+    const list = await List.findOne({
+      _id: listId,
+      $or: [{ owner: userId }, { sharedWith: userId }],
+    });
+    if (!list) {
+      return res.status(403).json({ error: ErrorMessage.listNotFound });
+    }
+
+    const task = await Task.findOneAndUpdate(
+      { _id: taskId, list: listId },
+      { completed, updatedBy: userId },
       { new: true }
     )
       .populate("createdBy", "username")
